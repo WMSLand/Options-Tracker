@@ -12,4 +12,4 @@ COPY backend/ ./backend/
 EXPOSE 8000
 
 # Start the application
-CMD ["uvicorn", "backend.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "backend.server:app", "--host", "0.0.0.0", "--port", "8000"]
