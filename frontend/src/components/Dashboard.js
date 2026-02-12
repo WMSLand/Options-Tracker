@@ -99,22 +99,40 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
       return;
     }
 
+    const newTrade = {
+      id: `trade_${Date.now()}`,
+      user_id: userId,
+      ticker: formData.ticker.toUpperCase(),
+      strike_price: parseFloat(formData.strike_price),
+      trade_type: formData.trade_type,
+      expiry_date: formData.expiry_date,
+      premium: formData.premium ? parseFloat(formData.premium) : null,
+      created_at: new Date().toISOString()
+    };
+
     try {
       await axios.post(`${API}/trades?user_id=${userId}`, formData);
       toast.success(`${formData.ticker} ${formData.trade_type} added`);
-      setFormData({
-        ticker: '',
-        strike_price: '',
-        trade_type: 'put',
-        expiry_date: '',
-        premium: ''
-      });
-      setDialogOpen(false);
-      fetchTrades();
     } catch (error) {
-      console.error('Error creating trade:', error);
-      toast.error('Failed to create trade');
+      console.error('Error creating trade via API:', error);
+      // Fallback to localStorage
+      toast.warning('Saved locally - API not available');
     }
+    
+    // Always save to localStorage as backup
+    const currentTrades = [...trades, newTrade];
+    setTrades(currentTrades);
+    localStorage.setItem(`trades_${userId}`, JSON.stringify(currentTrades));
+    
+    setFormData({
+      ticker: '',
+      strike_price: '',
+      trade_type: 'put',
+      expiry_date: '',
+      premium: ''
+    });
+    setDialogOpen(false);
+    fetchTrades();
   };
 
   const handleDelete = async (tradeId) => {
