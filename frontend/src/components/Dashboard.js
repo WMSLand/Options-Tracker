@@ -139,11 +139,15 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
     try {
       await axios.delete(`${API}/trades/${tradeId}?user_id=${userId}`);
       toast.success('Trade deleted');
-      fetchTrades();
     } catch (error) {
       console.error('Error deleting trade:', error);
-      toast.error('Failed to delete trade');
+      toast.warning('Deleted locally - API not available');
     }
+    
+    // Always update localStorage
+    const updatedTrades = trades.filter(t => t.id !== tradeId);
+    setTrades(updatedTrades);
+    localStorage.setItem(`trades_${userId}`, JSON.stringify(updatedTrades));
   };
 
   const togglePushNotifications = async () => {
