@@ -96,14 +96,49 @@ def create_access_token(data: dict) -> str:
 
 def get_current_price(ticker: str) -> Optional[float]:
     try:
+        import time
         stock = yf.Ticker(ticker)
-        data = stock.history(period="1d", interval="1m")
-        if not data.empty:
-            return float(data['Close'].iloc[-1])
-        data = stock.history(period="5d")
-        if not data.empty:
-            return float(data['Close'].iloc[-1])
+        
+        # Try different data periods
+        for period in ["1d", "5d", "1mo"]:
+            try:
+                data = stock.history(period=period)
+                if not data.empty and 'Close' in data.columns:
+                    price = float(data['Close'].iloc[-1])
+                    if price > 0:
+                        logger.info(f"Successfully fetched {ticker} price: ${price}")
+                        return price
+                time.sleep(0.5)
+            except Exception as period_error:
+                logger.debug(f"Failed to fetch {ticker} with period {period}: {period_error}")
+                continue
+        
+        # Try fast_info as fallback
+        try:
+            fast_info = stock.fast_info
+            if hasattr(fast_info, 'last_price') and fast_info.last_price:
+                price = float(fast_info.last_price)
+                if price > 0:
+                    logger.info(f"Got {ticker} from fast_info: ${price}")
+                    return price
+        except Exception as fast_error:
+            logger.debug(f"fast_info failed for {ticker}: {fast_error}")
+        
+        # Try info as last resort
+        try:
+            info = stock.info
+            for key in ['currentPrice', 'regularMarketPrice', 'previousClose']:
+                if key in info and info[key]:
+                    price = float(info[key])
+                    if price > 0:
+                        logger.info(f"Got {ticker} from info.{key}: ${price}")
+                        return price
+        except Exception as info_error:
+            logger.debug(f"info failed for {ticker}: {info_error}")
+        
+        logger.warning(f"Unable to fetch price for {ticker} from any source")
         return None
+        
     except Exception as e:
         logger.error(f"Error fetching price for {ticker}: {e}")
         return None
