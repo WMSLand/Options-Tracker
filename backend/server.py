@@ -96,48 +96,55 @@ def create_access_token(data: dict) -> str:
 
 def get_current_price(ticker: str) -> Optional[float]:
     """
-    Get current stock price. In production, this would use a real stock API.
-    Currently using mock data due to yfinance API access restrictions in container environment.
+    Get current stock price from Alpha Vantage API.
+    Falls back to mock data if API fails or rate limit exceeded.
     """
     try:
-        # Mock prices for demo purposes (yfinance has network restrictions in this environment)
-        # In production, replace with Alpha Vantage, IEX Cloud, or another stock API
-        mock_prices = {
-            'AAPL': 175.50,
-            'MSFT': 380.20,
-            'GOOGL': 142.30,
-            'AMZN': 178.90,
-            'TSLA': 190.45,
-            'NVDA': 720.80,
-            'META': 468.35,
-            'NFLX': 610.20,
-            'AMD': 152.70,
-            'SPY': 485.60,
-            'QQQ': 415.30,
-            'IWM': 198.40
-        }
+        import requests
+        api_key = os.getenv("ALPHA_VANTAGE_KEY", "")
         
-        ticker_upper = ticker.upper()
+        if not api_key:
+            logger.warning("ALPHA_VANTAGE_KEY not set, using mock data")
+            return get_mock_price(ticker)
         
-        # Return mock price if available
-        if ticker_upper in mock_prices:
-            # Add small random variation for demo
-            import random
-            base_price = mock_prices[ticker_upper]
-            variation = random.uniform(-0.02, 0.02)  # +/- 2%
-            price = base_price * (1 + variation)
-            logger.info(f"Mock price for {ticker}: ${price:.2f}")
-            return round(price, 2)
+        url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={api_key}"
+        response = requests.get(url, timeout=5)
+        data = response.json()
         
-        # For unknown tickers, return a random price between 50-300
-        import random
-        price = random.uniform(50, 300)
-        logger.info(f"Generated random price for {ticker}: ${price:.2f}")
-        return round(price, 2)
-        
+        if "Global Quote" in data and "05. price" in data["Global Quote"]:
+            price = float(data["Global Quote"]["05. price"])
+            logger.info(f"Alpha Vantage price for {ticker}: ${price:.2f}")
+            return price
+        elif "Note" in data:
+            logger.warning(f"Alpha Vantage rate limit hit for {ticker}, using mock data")
+            return get_mock_price(ticker)
+        else:
+            logger.warning(f"No data from Alpha Vantage for {ticker}, using mock data")
+            return get_mock_price(ticker)
+            
     except Exception as e:
         logger.error(f"Error fetching price for {ticker}: {e}")
-        return None
+        return get_mock_price(ticker)
+
+def get_mock_price(ticker: str) -> Optional[float]:
+    """Fallback mock prices when API unavailable"""
+    mock_prices = {
+        'AAPL': 175.50, 'MSFT': 380.20, 'GOOGL': 142.30,
+        'AMZN': 178.90, 'TSLA': 190.45, 'NVDA': 720.80,
+        'META': 468.35, 'NFLX': 610.20, 'AMD': 152.70,
+        'SPY': 485.60, 'QQQ': 415.30, 'IWM': 198.40
+    }
+    
+    ticker_upper = ticker.upper()
+    if ticker_upper in mock_prices:
+        import random
+        base_price = mock_prices[ticker_upper]
+        variation = random.uniform(-0.02, 0.02)
+        price = base_price * (1 + variation)
+        return round(price, 2)
+    
+    import random
+    return round(random.uniform(50, 300), 2)
 
 async def check_alerts_and_notify():
     global should_monitor
