@@ -11,5 +11,5 @@ COPY backend/ ./backend/
 # Expose port
 EXPOSE 8000
 
-# Start the application
-CMD ["python", "-m", "uvicorn", "backend.server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the application - use Railway's PORT env var
+CMD uvicorn backend.server:app --host 0.0.0.0 --port ${PORT:-8000}
