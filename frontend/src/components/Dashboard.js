@@ -444,60 +444,57 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                   return (
                     <div
                       key={trade.id}
-                      className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-800/50 transition-colors"
+                      className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:bg-zinc-800/50 transition-colors"
                       data-testid={`trade-${trade.ticker}`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-bold text-white tabular-nums" data-testid={`ticker-${trade.ticker}`}>
-                              {trade.ticker}
-                            </h3>
-                            <Badge 
-                              variant="outline" 
-                              className={`${trade.trade_type === 'put' ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'} font-mono text-xs uppercase`}
-                              data-testid={`type-badge-${trade.ticker}`}
-                            >
-                              {trade.trade_type === 'put' ? (
-                                <><TrendingDown className="h-3 w-3 mr-1" /> PUT</>
-                              ) : (
-                                <><TrendingUp className="h-3 w-3 mr-1" /> CALL</>
-                              )}
-                            </Badge>
-                            
-                            <Badge className={`${alertStatus.color} text-white font-mono text-xs`} data-testid={`alert-badge-${trade.ticker}`}>
-                              {alertStatus.message}
-                            </Badge>
-                          </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <h3 className="text-lg font-bold text-white tabular-nums" data-testid={`ticker-${trade.ticker}`}>
+                            {trade.ticker}
+                          </h3>
                           
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                            <div>
-                              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Strike</p>
-                              <p className="text-lg font-medium text-white tabular-nums" data-testid={`strike-${trade.ticker}`}>
-                                ${trade.strike_price.toFixed(2)}
-                              </p>
+                          <Badge 
+                            variant="outline" 
+                            className={`${trade.trade_type === 'put' ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'} font-mono text-xs uppercase shrink-0`}
+                            data-testid={`type-badge-${trade.ticker}`}
+                          >
+                            {trade.trade_type === 'put' ? (
+                              <><TrendingDown className="h-3 w-3 mr-1" /> PUT</>
+                            ) : (
+                              <><TrendingUp className="h-3 w-3 mr-1" /> CALL</>
+                            )}
+                          </Badge>
+                          
+                          <Badge className={`${alertStatus.color} text-white font-mono text-xs shrink-0`} data-testid={`alert-badge-${trade.ticker}`}>
+                            {alertStatus.message}
+                          </Badge>
+                          
+                          <div className="flex items-center gap-4 text-sm tabular-nums ml-auto">
+                            <div className="flex items-center gap-1">
+                              <span className="text-zinc-500 text-xs">Strike:</span>
+                              <span className="text-white font-medium" data-testid={`strike-${trade.ticker}`}>${trade.strike_price.toFixed(2)}</span>
                             </div>
                             
-                            <div>
-                              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Current</p>
-                              <p className="text-lg font-medium text-white tabular-nums" data-testid={`price-${trade.ticker}`}>
-                                {currentPrice ? `$${currentPrice.toFixed(2)}` : 'Loading...'}
-                              </p>
+                            <div className="flex items-center gap-1">
+                              <span className="text-zinc-500 text-xs">Current:</span>
+                              <span className="text-white font-medium" data-testid={`price-${trade.ticker}`}>
+                                {currentPrice ? `$${currentPrice.toFixed(2)}` : '...'}
+                              </span>
                             </div>
                             
-                            <div>
-                              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Expiry</p>
-                              <p className="text-sm font-medium text-zinc-300 tabular-nums" data-testid={`expiry-${trade.ticker}`}>
+                            <div className="flex items-center gap-1">
+                              <span className="text-zinc-500 text-xs">Exp:</span>
+                              <span className="text-zinc-300 font-medium" data-testid={`expiry-${trade.ticker}`}>
                                 {trade.expiry_date}
-                              </p>
+                              </span>
                             </div>
                             
                             {trade.premium && (
-                              <div>
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Premium</p>
-                                <p className="text-sm font-medium text-zinc-300 tabular-nums" data-testid={`premium-${trade.ticker}`}>
+                              <div className="flex items-center gap-1">
+                                <span className="text-zinc-500 text-xs">Prem:</span>
+                                <span className="text-zinc-300 font-medium" data-testid={`premium-${trade.ticker}`}>
                                   ${trade.premium.toFixed(2)}
-                                </p>
+                                </span>
                               </div>
                             )}
                           </div>
@@ -507,7 +504,7 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(trade.id)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                          className="text-red-400 hover:text-red-300 hover:bg-red-900/20 shrink-0"
                           data-testid={`delete-${trade.ticker}`}
                         >
                           <Trash2 className="h-4 w-4" />
