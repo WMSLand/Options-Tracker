@@ -11,9 +11,11 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [userId, setUserId] = useState(localStorage.getItem('userId'));
   const [isGuest, setIsGuest] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) {
+      // Try to get guest token
       fetch(`${API}/auth/guest-token`)
         .then(res => res.json())
         .then(data => {
@@ -23,8 +25,20 @@ function App() {
           setIsGuest(true);
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('userId', guestId);
+          setLoading(false);
         })
-        .catch(err => console.error('Error getting guest token:', err));
+        .catch(err => {
+          console.error('Error getting guest token:', err);
+          // Still allow access with temporary guest ID
+          const guestId = `guest_${Date.now()}`;
+          setUserId(guestId);
+          setIsGuest(true);
+          setToken('guest_temp');
+          localStorage.setItem('userId', guestId);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
     }
   }, [token]);
 
@@ -44,9 +58,17 @@ function App() {
     localStorage.removeItem('userId');
   };
 
+  if (loading) {
+    return (
+      <div className="App dark min-h-screen flex items-center justify-center bg-[#09090B]">
+        <div className="text-zinc-400">Loading Options Tracker...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="App dark">
-      {token && userId ? (
+      {userId ? (
         <Dashboard 
           userId={userId} 
           isGuest={isGuest} 
@@ -54,7 +76,9 @@ function App() {
           onLogout={handleLogout}
         />
       ) : (
-        <Auth onLogin={handleLogin} />
+        <div className="min-h-screen flex items-center justify-center bg-[#09090B]">
+          <div className="text-zinc-400">Initializing...</div>
+        </div>
       )}
       <Toaster richColors position="top-right" />
     </div>
