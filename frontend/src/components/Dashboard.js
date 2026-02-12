@@ -463,83 +463,122 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                 <p>No trades yet. Add your first position above.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {trades.map((trade) => {
-                  const currentPrice = stockPrices[trade.ticker];
-                  const alertStatus = calculateAlertStatus(trade, currentPrice);
-                  
-                  return (
-                    <div
-                      key={trade.id}
-                      className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:bg-zinc-800/50 transition-colors"
-                      data-testid={`trade-${trade.ticker}`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <h3 className="text-lg font-bold text-white tabular-nums" data-testid={`ticker-${trade.ticker}`}>
-                            {trade.ticker}
-                          </h3>
-                          
-                          <Badge 
-                            variant="outline" 
-                            className={`${trade.trade_type === 'put' ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'} font-mono text-xs uppercase shrink-0`}
-                            data-testid={`type-badge-${trade.ticker}`}
-                          >
-                            {trade.trade_type === 'put' ? (
-                              <><TrendingDown className="h-3 w-3 mr-1" /> PUT</>
-                            ) : (
-                              <><TrendingUp className="h-3 w-3 mr-1" /> CALL</>
-                            )}
-                          </Badge>
-                          
-                          <Badge className={`${alertStatus.color} text-white font-mono text-xs shrink-0`} data-testid={`alert-badge-${trade.ticker}`}>
-                            {alertStatus.message}
-                          </Badge>
-                          
-                          <div className="flex items-center gap-4 text-sm tabular-nums ml-auto">
-                            <div className="flex items-center gap-1">
-                              <span className="text-zinc-500 text-xs">Strike:</span>
-                              <span className="text-white font-medium" data-testid={`strike-${trade.ticker}`}>${trade.strike_price.toFixed(2)}</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-1">
-                              <span className="text-zinc-500 text-xs">Current:</span>
-                              <span className="text-white font-medium" data-testid={`price-${trade.ticker}`}>
-                                {currentPrice ? `$${currentPrice.toFixed(2)}` : '...'}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center gap-1">
-                              <span className="text-zinc-500 text-xs">Exp:</span>
-                              <span className="text-zinc-300 font-medium" data-testid={`expiry-${trade.ticker}`}>
-                                {trade.expiry_date}
-                              </span>
-                            </div>
-                            
-                            {trade.premium && (
-                              <div className="flex items-center gap-1">
-                                <span className="text-zinc-500 text-xs">Prem:</span>
-                                <span className="text-zinc-300 font-medium" data-testid={`premium-${trade.ticker}`}>
-                                  ${trade.premium.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(trade.id)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-900/20 shrink-0"
-                          data-testid={`delete-${trade.ticker}`}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-zinc-800">
+                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Symbol</th>
+                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Type</th>
+                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Status</th>
+                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Strike</th>
+                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Current</th>
+                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">% from Strike</th>
+                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Expiry</th>
+                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Premium</th>
+                      <th className="py-3 px-4"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trades.map((trade) => {
+                      const currentPrice = stockPrices[trade.ticker];
+                      const alertStatus = calculateAlertStatus(trade, currentPrice);
+                      
+                      // Calculate % difference
+                      let percentDiff = null;
+                      let percentDisplay = '—';
+                      if (currentPrice) {
+                        percentDiff = ((currentPrice - trade.strike_price) / trade.strike_price) * 100;
+                        const sign = percentDiff >= 0 ? '+' : '';
+                        percentDisplay = `${sign}${percentDiff.toFixed(2)}%`;
+                      }
+                      
+                      return (
+                        <tr
+                          key={trade.id}
+                          className="border-b border-zinc-800 hover:bg-zinc-800/30 transition-colors"
+                          data-testid={`trade-${trade.ticker}`}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                          <td className="py-3 px-4">
+                            <span className="text-lg font-bold text-white tabular-nums" data-testid={`ticker-${trade.ticker}`}>
+                              {trade.ticker}
+                            </span>
+                          </td>
+                          
+                          <td className="py-3 px-4">
+                            <Badge 
+                              variant="outline" 
+                              className={`${trade.trade_type === 'put' ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'} font-mono text-xs uppercase`}
+                              data-testid={`type-badge-${trade.ticker}`}
+                            >
+                              {trade.trade_type === 'put' ? (
+                                <><TrendingDown className="h-3 w-3 mr-1" /> PUT</>
+                              ) : (
+                                <><TrendingUp className="h-3 w-3 mr-1" /> CALL</>
+                              )}
+                            </Badge>
+                          </td>
+                          
+                          <td className="py-3 px-4">
+                            <Badge className={`${alertStatus.color} text-white font-mono text-xs`} data-testid={`alert-badge-${trade.ticker}`}>
+                              {alertStatus.message}
+                            </Badge>
+                          </td>
+                          
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-white font-medium tabular-nums" data-testid={`strike-${trade.ticker}`}>
+                              ${trade.strike_price.toFixed(2)}
+                            </span>
+                          </td>
+                          
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-white font-medium tabular-nums" data-testid={`price-${trade.ticker}`}>
+                              {currentPrice ? `$${currentPrice.toFixed(2)}` : '...'}
+                            </span>
+                          </td>
+                          
+                          <td className="py-3 px-4 text-right">
+                            <span 
+                              className={`font-medium tabular-nums ${
+                                percentDiff !== null 
+                                  ? percentDiff >= 0 
+                                    ? 'text-green-400' 
+                                    : 'text-red-400'
+                                  : 'text-zinc-500'
+                              }`}
+                              data-testid={`percent-${trade.ticker}`}
+                            >
+                              {percentDisplay}
+                            </span>
+                          </td>
+                          
+                          <td className="py-3 px-4">
+                            <span className="text-zinc-300 tabular-nums text-sm" data-testid={`expiry-${trade.ticker}`}>
+                              {trade.expiry_date}
+                            </span>
+                          </td>
+                          
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-zinc-300 tabular-nums text-sm" data-testid={`premium-${trade.ticker}`}>
+                              {trade.premium ? `$${trade.premium.toFixed(2)}` : '—'}
+                            </span>
+                          </td>
+                          
+                          <td className="py-3 px-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(trade.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              data-testid={`delete-${trade.ticker}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>
