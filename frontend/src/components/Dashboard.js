@@ -58,10 +58,19 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
     try {
       const response = await axios.get(`${API}/trades?user_id=${userId}`);
       setTrades(response.data.trades);
+      // Also save to localStorage as backup
+      localStorage.setItem(`trades_${userId}`, JSON.stringify(response.data.trades));
       setLoading(false);
     } catch (error) {
       console.error('Error fetching trades:', error);
-      toast.error('Failed to load trades');
+      // Fallback to localStorage if API fails
+      const localTrades = localStorage.getItem(`trades_${userId}`);
+      if (localTrades) {
+        setTrades(JSON.parse(localTrades));
+        toast.warning('Using offline mode - API not available');
+      } else {
+        setTrades([]);
+      }
       setLoading(false);
     }
   };
