@@ -1,0 +1,9 @@
+node_modules/
+__pycache__/
+*.pyc
+.env.local
+.git/
+.vscode/
+.idea/
+test_reports/
+*.log
