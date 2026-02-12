@@ -184,14 +184,32 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
           await subscription.unsubscribe();
-          await axios.post(`${API}/push/unsubscribe?user_id=${userId}`);
+          await axios.post(`${API}/push/unsubscribe?user_id=${userId}`).catch(() => {});
           setIsPushEnabled(false);
           toast.success('Push notifications disabled');
         }
       } else {
+        // Check current permission status
+        const currentPermission = Notification.permission;
+        
+        if (currentPermission === 'denied') {
+          toast.error('Notifications blocked. Please enable in browser settings', {
+            duration: 5000,
+            description: 'Click the lock icon in address bar → Site settings → Notifications'
+          });
+          return;
+        }
+        
         const permission = await Notification.requestPermission();
+        
         if (permission !== 'granted') {
-          toast.error('Permission denied for notifications');
+          if (permission === 'denied') {
+            toast.error('Notifications blocked. Check browser settings to enable', {
+              duration: 5000
+            });
+          } else {
+            toast.warning('Notification permission dismissed');
+          }
           return;
         }
 
@@ -210,14 +228,23 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
             p256dh: arrayBufferToBase64(subscription.getKey('p256dh')),
             auth: arrayBufferToBase64(subscription.getKey('auth'))
           }
+        }).catch(() => {
+          toast.warning('Notifications enabled locally (offline mode)');
         });
 
         setIsPushEnabled(true);
-        toast.success('Push notifications enabled');
+        toast.success('Push notifications enabled!');
       }
     } catch (error) {
       console.error('Error toggling push notifications:', error);
-      toast.error('Failed to update notification settings');
+      
+      if (error.name === 'NotAllowedError') {
+        toast.error('Permission denied. Enable notifications in browser settings');
+      } else if (error.name === 'NotSupportedError') {
+        toast.error('Push notifications not supported on this device');
+      } else {
+        toast.error('Failed to update notification settings');
+      }
     }
   };
 
