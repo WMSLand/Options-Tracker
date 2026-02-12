@@ -95,10 +95,11 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_current_price(ticker: str) -> Optional[float]:
-    \"\"\"
+    """
     Get current stock price. In production, this would use a real stock API.
     Currently using mock data due to yfinance API access restrictions in container environment.
-    \"\"\"\n    try:
+    """
+    try:
         # Mock prices for demo purposes (yfinance has network restrictions in this environment)
         # In production, replace with Alpha Vantage, IEX Cloud, or another stock API
         mock_prices = {
@@ -125,17 +126,17 @@ def get_current_price(ticker: str) -> Optional[float]:
             base_price = mock_prices[ticker_upper]
             variation = random.uniform(-0.02, 0.02)  # +/- 2%
             price = base_price * (1 + variation)
-            logger.info(f\"Mock price for {ticker}: ${price:.2f}\")
+            logger.info(f"Mock price for {ticker}: ${price:.2f}")
             return round(price, 2)
         
         # For unknown tickers, return a random price between 50-300
         import random
         price = random.uniform(50, 300)
-        logger.info(f\"Generated random price for {ticker}: ${price:.2f}\")
+        logger.info(f"Generated random price for {ticker}: ${price:.2f}")
         return round(price, 2)
         
     except Exception as e:
-        logger.error(f\"Error fetching price for {ticker}: {e}\")
+        logger.error(f"Error fetching price for {ticker}: {e}")
         return None
 
 async def check_alerts_and_notify():
