@@ -1,0 +1,152 @@
+{
+  "identity": {
+    "name": "E1",
+    "archetype": "The Dark Swiss",
+    "mission": "Create a financial dashboard that feels like a Bloomberg Terminal redesigned by a Swiss minimalist. Precision, speed, and zero fluff.",
+    "principles": [
+      "Data is the Art: The numbers are the hero. Everything else is support.",
+      "Darkness is Canvas: Use deep obsidian backgrounds to make colored data pop.",
+      "Monospace for Money: All financial data must use tabular lining figures (JetBrains Mono).",
+      "Density over Whitespace: In trading, seeing more rows matters. Use compact density.",
+      "Alerts are Signal: Alerts must cut through the noise with high-contrast visibility."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "headings": {
+        "family": "Manrope",
+        "weights": ["600", "700"],
+        "usage": "Page titles, Section headers, Modal titles"
+      },
+      "body": {
+        "family": "Inter",
+        "weights": ["400", "500"],
+        "usage": "Labels, descriptions, form inputs"
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "weights": ["400", "500"],
+        "usage": "Stock prices, Strike prices, P&L, Greeks, Expiry dates"
+      }
+    },
+    "rules": [
+      "Use tracking-tight (-0.02em) for all headings.",
+      "Use tabular-nums class for all dynamic data to prevent jitter.",
+      "Headings should be White (#FFFFFF).",
+      "Secondary text (labels) should be Zinc-400 (#A1A1AA)."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "default": "#09090B",
+        "surface": "#18181B",
+        "overlay": "#27272A"
+      },
+      "border": {
+        "default": "#27272A",
+        "active": "#3F3F46"
+      },
+      "text": {
+        "primary": "#FAFAFA",
+        "secondary": "#A1A1AA",
+        "muted": "#52525B"
+      },
+      "functional": {
+        "success": "#10B981",
+        "success_dim": "rgba(16, 185, 129, 0.1)",
+        "danger": "#EF4444",
+        "danger_dim": "rgba(239, 68, 68, 0.1)",
+        "warning": "#F59E0B",
+        "warning_dim": "rgba(245, 158, 11, 0.1)",
+        "info": "#3B82F6"
+      }
+    },
+    "usage_rules": [
+      "NEVER use gradients for backgrounds. Flat, matte colors only.",
+      "Use 'dim' colors for backgrounds of badges/chips (e.g., bg-green-500/10 text-green-500).",
+      "Borders should be subtle (Zinc-800).",
+      "Call Options = Green/Neutral. Put Options = Red/Neutral (or context dependent)."
+    ]
+  },
+  "layout": {
+    "grid_system": "Bento Grid Mode B (High Density)",
+    "spacing": {
+      "container_padding": "p-6 md:p-8",
+      "gap": "gap-4",
+      "component_density": "compact"
+    },
+    "structure": [
+      "Top Bar: Global Portfolio Stats (Net Liq, Daily P&L) - Fixed height.",
+      "Main Content: 12-column grid.",
+      "  - Left/Center (Col 1-9): Active Trades Table (The 'Ledger').",
+      "  - Right (Col 10-12): Watchlist & Alerts Panel."
+    ]
+  },
+  "components": {
+    "Table": {
+      "style": "compact",
+      "features": [
+        "Sticky header",
+        "Row hover effect: bg-zinc-800/50",
+        "Border-b border-zinc-800",
+        "Cell padding: py-2 px-4"
+      ]
+    },
+    "Card": {
+      "style": "flat",
+      "classes": "bg-zinc-900 border border-zinc-800 rounded-lg shadow-none"
+    },
+    "Button": {
+      "primary": "bg-white text-black hover:bg-zinc-200 rounded-md font-medium",
+      "secondary": "bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700 rounded-md",
+      "destructive": "bg-red-900/20 text-red-400 hover:bg-red-900/40 border border-red-900/50"
+    },
+    "Badge": {
+      "style": "outline",
+      "classes": "font-mono text-xs uppercase tracking-wider border"
+    },
+    "Input": {
+      "style": "minimal",
+      "classes": "bg-zinc-950 border-zinc-800 focus:ring-zinc-700 focus:border-zinc-600"
+    }
+  },
+  "visual_enhancers": {
+    "tracing_beam": "Use a subtle glowing border effect on the 'Add Trade' modal to draw attention.",
+    "glassmorphism": "Use backdrop-blur-md bg-black/50 for the sticky top navigation bar.",
+    "alert_indicators": "Use a progress bar or 'distance meter' in the table row to show how close price is to strike. Color code it: Green (>10%), Yellow (5-10%), Red (<5%)."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "background_texture",
+        "url": "https://images.unsplash.com/photo-1647067517631-aa36cda58a17?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGZpbmFuY2lhbCUyMGRhdGElMjBkYXJrJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzA5MTA2OTh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Subtle dark financial data texture for login page background or empty states."
+      }
+    ],
+    "icons": "Use 'lucide-react' for all UI icons. Use 'TrendingUp', 'TrendingDown', 'AlertTriangle', 'DollarSign'."
+  },
+  "instructions_to_main_agent": {
+    "step_1": "Setup Tailwind theme with the specific Zinc colors defined in 'colors'.",
+    "step_2": "Create the 'Trade' type definition (Ticker, Strike, Expiry, Type, Premium, Current Price).",
+    "step_3": "Build the 'Dashboard' layout using the Bento Grid strategy.",
+    "step_4": "Implement the 'Active Trades' table with high density. Use 'JetBrains Mono' for all numbers.",
+    "step_5": "Create the 'Add Trade' dialog using Shadcn Dialog + Form.",
+    "step_6": "Implement the Alert Logic: Calculate % difference between Current Price and Strike. If Put & <5%, show Warning. If Call & <1%, show Warning.",
+    "step_7": "Use 'sonner' for real-time alert notifications."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts. Use grids.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for overlays.",
+    "Every interaction needs micro-animations - hover states, transitions.",
+    "Use 2-3x more spacing than feels comfortable in the layout containers, but keep data tables dense.",
+    "Subtle grain textures or noise overlays can separate good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Components MUST use named exports.",
+    "Pages MUST use default exports.",
+    "Use 'sonner' for toasts."
+  ]
+}
