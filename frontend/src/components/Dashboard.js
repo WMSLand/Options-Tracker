@@ -457,7 +457,7 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2">
             {trades.length === 0 ? (
               <div className="text-center py-12 text-zinc-500">
                 <p>No trades yet. Add your first position above.</p>
@@ -467,15 +467,15 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-zinc-800">
-                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Symbol</th>
-                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Type</th>
-                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Status</th>
-                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Strike</th>
-                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Current</th>
-                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">% from Strike</th>
-                      <th className="text-left py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Expiry</th>
-                      <th className="text-right py-3 px-4 text-xs text-zinc-500 uppercase tracking-wider font-medium">Premium</th>
-                      <th className="py-3 px-4"></th>
+                      <th className="text-left py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Symbol</th>
+                      <th className="text-left py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Type</th>
+                      <th className="text-left py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Status</th>
+                      <th className="text-right py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Strike</th>
+                      <th className="text-right py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Current</th>
+                      <th className="text-right py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">% Diff</th>
+                      <th className="text-left py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Expiry</th>
+                      <th className="text-right py-2 px-2 text-xs text-zinc-500 uppercase tracking-wider font-medium">Prem</th>
+                      <th className="py-2 px-2"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -489,7 +489,7 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                       if (currentPrice) {
                         percentDiff = ((currentPrice - trade.strike_price) / trade.strike_price) * 100;
                         const sign = percentDiff >= 0 ? '+' : '';
-                        percentDisplay = `${sign}${percentDiff.toFixed(2)}%`;
+                        percentDisplay = `${sign}${percentDiff.toFixed(1)}%`;
                       }
                       
                       return (
@@ -498,47 +498,47 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                           className="border-b border-zinc-800 hover:bg-zinc-800/30 transition-colors"
                           data-testid={`trade-${trade.ticker}`}
                         >
-                          <td className="py-3 px-4">
-                            <span className="text-lg font-bold text-white tabular-nums" data-testid={`ticker-${trade.ticker}`}>
+                          <td className="py-2.5 px-2">
+                            <span className="text-base font-bold text-white tabular-nums" data-testid={`ticker-${trade.ticker}`}>
                               {trade.ticker}
                             </span>
                           </td>
                           
-                          <td className="py-3 px-4">
+                          <td className="py-2.5 px-2">
                             <Badge 
                               variant="outline" 
-                              className={`${trade.trade_type === 'put' ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'} font-mono text-xs uppercase`}
+                              className={`${trade.trade_type === 'put' ? 'border-red-500/50 text-red-400' : 'border-green-500/50 text-green-400'} font-mono text-[10px] uppercase px-1.5 py-0.5`}
                               data-testid={`type-badge-${trade.ticker}`}
                             >
                               {trade.trade_type === 'put' ? (
-                                <><TrendingDown className="h-3 w-3 mr-1" /> PUT</>
+                                <><TrendingDown className="h-2.5 w-2.5 mr-0.5" /> PUT</>
                               ) : (
-                                <><TrendingUp className="h-3 w-3 mr-1" /> CALL</>
+                                <><TrendingUp className="h-2.5 w-2.5 mr-0.5" /> CALL</>
                               )}
                             </Badge>
                           </td>
                           
-                          <td className="py-3 px-4">
-                            <Badge className={`${alertStatus.color} text-white font-mono text-xs`} data-testid={`alert-badge-${trade.ticker}`}>
+                          <td className="py-2.5 px-2">
+                            <Badge className={`${alertStatus.color} text-white font-mono text-[10px] px-1.5 py-0.5`} data-testid={`alert-badge-${trade.ticker}`}>
                               {alertStatus.message}
                             </Badge>
                           </td>
                           
-                          <td className="py-3 px-4 text-right">
-                            <span className="text-white font-medium tabular-nums" data-testid={`strike-${trade.ticker}`}>
+                          <td className="py-2.5 px-2 text-right">
+                            <span className="text-sm text-white font-medium tabular-nums" data-testid={`strike-${trade.ticker}`}>
                               ${trade.strike_price.toFixed(2)}
                             </span>
                           </td>
                           
-                          <td className="py-3 px-4 text-right">
-                            <span className="text-white font-medium tabular-nums" data-testid={`price-${trade.ticker}`}>
+                          <td className="py-2.5 px-2 text-right">
+                            <span className="text-sm text-white font-medium tabular-nums" data-testid={`price-${trade.ticker}`}>
                               {currentPrice ? `$${currentPrice.toFixed(2)}` : '...'}
                             </span>
                           </td>
                           
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-2.5 px-2 text-right">
                             <span 
-                              className={`font-medium tabular-nums ${
+                              className={`text-sm font-medium tabular-nums ${
                                 percentDiff !== null 
                                   ? percentDiff >= 0 
                                     ? 'text-green-400' 
@@ -551,27 +551,27 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
                             </span>
                           </td>
                           
-                          <td className="py-3 px-4">
-                            <span className="text-zinc-300 tabular-nums text-sm" data-testid={`expiry-${trade.ticker}`}>
+                          <td className="py-2.5 px-2">
+                            <span className="text-zinc-300 tabular-nums text-xs" data-testid={`expiry-${trade.ticker}`}>
                               {trade.expiry_date}
                             </span>
                           </td>
                           
-                          <td className="py-3 px-4 text-right">
-                            <span className="text-zinc-300 tabular-nums text-sm" data-testid={`premium-${trade.ticker}`}>
+                          <td className="py-2.5 px-2 text-right">
+                            <span className="text-zinc-300 tabular-nums text-xs" data-testid={`premium-${trade.ticker}`}>
                               {trade.premium ? `$${trade.premium.toFixed(2)}` : '—'}
                             </span>
                           </td>
                           
-                          <td className="py-3 px-4">
+                          <td className="py-2.5 px-2">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(trade.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-7 w-7 p-0"
                               data-testid={`delete-${trade.ticker}`}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </td>
                         </tr>
