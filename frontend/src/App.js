@@ -1,52 +1,62 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import '@/App.css';
+import Dashboard from '@/components/Dashboard';
+import Auth from '@/components/Auth';
+import { Toaster } from '@/components/ui/sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+function App() {
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [userId, setUserId] = useState(localStorage.getItem('userId'));
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    helloWorldApi();
-  }, []);
+    if (!token) {
+      fetch(`${API}/auth/guest-token`)
+        .then(res => res.json())
+        .then(data => {
+          setToken(data.access_token);
+          const guestId = `guest_${Date.now()}`;
+          setUserId(guestId);
+          setIsGuest(true);
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('userId', guestId);
+        })
+        .catch(err => console.error('Error getting guest token:', err));
+    }
+  }, [token]);
+
+  const handleLogin = (newToken, newUserId) => {
+    setToken(newToken);
+    setUserId(newUserId);
+    setIsGuest(false);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('userId', newUserId);
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    setUserId(null);
+    setIsGuest(false);
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+  };
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="App dark">
+      {token && userId ? (
+        <Dashboard 
+          userId={userId} 
+          isGuest={isGuest} 
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+        />
+      ) : (
+        <Auth onLogin={handleLogin} />
+      )}
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

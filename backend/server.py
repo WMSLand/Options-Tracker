@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,67 +6,299 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
-
+from typing import List, Optional, Literal
+from datetime import datetime, timezone, timedelta
+import asyncio
+import yfinance as yf
+from pywebpush import webpush, WebPushException
+import json
+from passlib.context import CryptContext
+import jwt
+from contextlib import asynccontextmanager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "options_tracker_secret_key_2025")
+ALGORITHM = "HS256"
 
-# Create a router with the /api prefix
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+monitor_task = None
+should_monitor = False
+
+class Trade(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    id: Optional[str] = None
+    user_id: str
+    ticker: str
+    strike_price: float
+    trade_type: Literal["put", "call"]
+    expiry_date: str
+    premium: Optional[float] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TradeCreate(BaseModel):
+    ticker: str
+    strike_price: float
+    trade_type: Literal["put", "call"]
+    expiry_date: str
+    premium: Optional[float] = None
+
+class PushSubscription(BaseModel):
+    endpoint: str
+    keys: dict
+
+class User(BaseModel):
+    id: Optional[str] = None
+    email: str
+    password: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class StockPrice(BaseModel):
+    ticker: str
+    price: float
+    timestamp: datetime
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=30)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def get_current_price(ticker: str) -> Optional[float]:
+    try:
+        stock = yf.Ticker(ticker)
+        data = stock.history(period="1d", interval="1m")
+        if not data.empty:
+            return float(data['Close'].iloc[-1])
+        data = stock.history(period="5d")
+        if not data.empty:
+            return float(data['Close'].iloc[-1])
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching price for {ticker}: {e}")
+        return None
+
+async def check_alerts_and_notify():
+    global should_monitor
+    while should_monitor:
+        try:
+            trades = await db.trades.find({}).to_list(None)
+            
+            ticker_prices = {}
+            for trade in trades:
+                ticker = trade['ticker']
+                if ticker not in ticker_prices:
+                    price = get_current_price(ticker)
+                    if price:
+                        ticker_prices[ticker] = price
+            
+            for trade in trades:
+                ticker = trade['ticker']
+                if ticker not in ticker_prices:
+                    continue
+                    
+                current_price = ticker_prices[ticker]
+                strike_price = trade['strike_price']
+                trade_type = trade['trade_type']
+                
+                should_alert = False
+                alert_message = ""
+                
+                if trade_type == "put":
+                    pct_below = ((strike_price - current_price) / strike_price) * 100
+                    if pct_below >= 20:
+                        should_alert = True
+                        alert_message = f"{ticker} is 20%+ below PUT strike ${strike_price:.2f}. Current: ${current_price:.2f}"
+                    elif pct_below >= 15:
+                        should_alert = True
+                        alert_message = f"{ticker} is 15%+ below PUT strike ${strike_price:.2f}. Current: ${current_price:.2f}"
+                    elif pct_below >= 10:
+                        should_alert = True
+                        alert_message = f"{ticker} is 10%+ below PUT strike ${strike_price:.2f}. Current: ${current_price:.2f}"
+                    elif pct_below >= 5:
+                        should_alert = True
+                        alert_message = f"{ticker} is 5%+ below PUT strike ${strike_price:.2f}. Current: ${current_price:.2f}"
+                
+                elif trade_type == "call":
+                    pct_below = ((strike_price - current_price) / strike_price) * 100
+                    if pct_below <= 1 and pct_below >= 0:
+                        should_alert = True
+                        alert_message = f"{ticker} is within 1% of CALL strike ${strike_price:.2f}. Current: ${current_price:.2f}"
+                    elif pct_below <= 2 and pct_below >= 0:
+                        should_alert = True
+                        alert_message = f"{ticker} is within 2% of CALL strike ${strike_price:.2f}. Current: ${current_price:.2f}"
+                
+                if should_alert:
+                    user = await db.users.find_one({"_id": trade['user_id']})
+                    if user and user.get('push_subscription'):
+                        try:
+                            subscription_info = user['push_subscription']
+                            webpush(
+                                subscription_info=subscription_info,
+                                data=json.dumps({
+                                    "title": f"Options Alert: {ticker}",
+                                    "body": alert_message,
+                                    "icon": "/logo192.png",
+                                    "badge": "/logo192.png",
+                                    "tag": f"alert-{ticker}-{trade['id']}"
+                                }),
+                                vapid_private_key=os.getenv("VAPID_PRIVATE_KEY"),
+                                vapid_claims={
+                                    "sub": "mailto:alerts@optionstrade.com"
+                                }
+                            )
+                            logger.info(f"Alert sent for {ticker} to user {trade['user_id']}")
+                        except WebPushException as e:
+                            logger.error(f"Push notification failed: {e}")
+                        except Exception as e:
+                            logger.error(f"Error sending notification: {e}")
+            
+        except Exception as e:
+            logger.error(f"Error in alert monitoring: {e}")
+        
+        await asyncio.sleep(30)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global should_monitor, monitor_task
+    should_monitor = True
+    monitor_task = asyncio.create_task(check_alerts_and_notify())
+    logger.info("Background monitoring started")
+    yield
+    should_monitor = False
+    if monitor_task:
+        monitor_task.cancel()
+        try:
+            await monitor_task
+        except asyncio.CancelledError:
+            pass
+    client.close()
+    logger.info("Application shutdown complete")
+
+app = FastAPI(lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
 
-
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+@api_router.post("/auth/register", response_model=Token)
+async def register(user_create: UserCreate):
+    existing_user = await db.users.find_one({"email": user_create.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+    user_dict = {
+        "_id": user_create.email,
+        "email": user_create.email,
+        "password": hash_password(user_create.password),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "push_subscription": None
+    }
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
+    await db.users.insert_one(user_dict)
+    access_token = create_access_token(data={"sub": user_create.email})
     
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    return {"access_token": access_token, "token_type": "bearer"}
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.post("/auth/login", response_model=Token)
+async def login(user_login: UserLogin):
+    user = await db.users.find_one({"email": user_login.email})
+    if not user or not verify_password(user_login.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+    access_token = create_access_token(data={"sub": user_login.email})
+    return {"access_token": access_token, "token_type": "bearer"}
 
-# Include the router in the main app
+@api_router.get("/auth/guest-token", response_model=Token)
+async def get_guest_token():
+    guest_id = f"guest_{datetime.now(timezone.utc).timestamp()}"
+    access_token = create_access_token(data={"sub": guest_id, "guest": True})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@api_router.post("/trades")
+async def create_trade(trade_create: TradeCreate, user_id: str):
+    trade_dict = {
+        "id": str(datetime.now(timezone.utc).timestamp()),
+        "user_id": user_id,
+        "ticker": trade_create.ticker.upper(),
+        "strike_price": trade_create.strike_price,
+        "trade_type": trade_create.trade_type,
+        "expiry_date": trade_create.expiry_date,
+        "premium": trade_create.premium,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.trades.insert_one(trade_dict)
+    return {"message": "Trade created", "id": trade_dict["id"]}
+
+@api_router.get("/trades")
+async def get_trades(user_id: str):
+    trades = await db.trades.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+    return {"trades": trades}
+
+@api_router.delete("/trades/{trade_id}")
+async def delete_trade(trade_id: str, user_id: str):
+    result = await db.trades.delete_one({"id": trade_id, "user_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return {"message": "Trade deleted"}
+
+@api_router.get("/stock-price/{ticker}")
+async def get_stock_price(ticker: str):
+    price = get_current_price(ticker.upper())
+    if price is None:
+        raise HTTPException(status_code=404, detail="Unable to fetch stock price")
+    
+    return {
+        "ticker": ticker.upper(),
+        "price": price,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.post("/push/subscribe")
+async def subscribe_push(subscription: PushSubscription, user_id: str):
+    await db.users.update_one(
+        {"_id": user_id},
+        {"$set": {"push_subscription": subscription.model_dump()}},
+        upsert=True
+    )
+    return {"message": "Subscription saved"}
+
+@api_router.post("/push/unsubscribe")
+async def unsubscribe_push(user_id: str):
+    await db.users.update_one(
+        {"_id": user_id},
+        {"$set": {"push_subscription": None}}
+    )
+    return {"message": "Unsubscribed"}
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -76,14 +308,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
