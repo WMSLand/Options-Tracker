@@ -34,6 +34,7 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
       fetchTrades();
       checkPushSubscription();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ const Dashboard = ({ userId, isGuest, onLogin, onLogout }) => {
       fetchStockPrices();
       return () => clearInterval(interval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trades]);
 
   const checkPushSubscription = async () => {
